@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type SetAllCookies } from "@supabase/ssr";
 
 export function createClient() {
   const cookieStore = cookies();
@@ -8,7 +8,7 @@ export function createClient() {
       getAll() {
         return cookieStore.getAll();
       },
-      setAll(cookiesToSet) {
+      setAll(cookiesToSet: Parameters<SetAllCookies>[0]) {
         // In Server Components, Next.js forbids mutating cookies.
         // Route handlers / middleware handle session cookie writes.
         try {
