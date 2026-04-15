@@ -1,5 +1,7 @@
+import AdminProgrammeMonthSelect from "@/components/admin/AdminProgrammeMonthSelect";
+import { listCohortMembers } from "@/lib/adminCohort";
 import { createClient } from "@/lib/supabaseServer";
-import { PROGRAMME_MONTHS, getDaysElapsedInMonth, isMovementDay } from "@/lib/utils";
+import { PROGRAMME_MONTHS, getDaysElapsedInMonth, getFirstOfNextMonthIso, isMovementDay } from "@/lib/utils";
 
 type SearchParams = {
   month?: string;
@@ -14,15 +16,16 @@ export default async function ActivitySummaryPage({ searchParams }: { searchPara
   const monthMeta = PROGRAMME_MONTHS.find((m) => m.year === year && m.month === month) ?? PROGRAMME_MONTHS[0];
   const totalDays = getDaysElapsedInMonth(year, month);
 
-  const { data: members } = await supabase.from("profiles").select("id,full_name").eq("role", "member").order("full_name");
-  const monthPrefix = `${year}-${String(month).padStart(2, "0")}`;
+  const members = await listCohortMembers(supabase);
+  const monthStart = `${year}-${String(month).padStart(2, "0")}-01`;
+  const monthEndExclusive = getFirstOfNextMonthIso(year, month);
   const { data: logs } = await supabase
     .from("log_entries")
     .select("user_id,session_types,breathwork_minutes,entry_date")
-    .gte("entry_date", `${monthPrefix}-01`)
-    .lt("entry_date", `${monthPrefix}-32`);
+    .gte("entry_date", monthStart)
+    .lt("entry_date", monthEndExclusive);
 
-  const rows = (members ?? []).map((member) => {
+  const rows = members.map((member) => {
     const my = (logs ?? []).filter((l) => l.user_id === member.id);
     const movement = my.filter((x) => isMovementDay(x.session_types)).length;
     const still = my.filter((x) => x.breathwork_minutes > 0).length;
@@ -48,23 +51,7 @@ export default async function ActivitySummaryPage({ searchParams }: { searchPara
           <p className="mt-1 text-sm text-neutral-500">Monthly view · {monthMeta.label} {monthMeta.year} · {totalDays} days elapsed</p>
         </div>
         <div className="flex items-center gap-3">
-          <form>
-            <select
-              name="month"
-              defaultValue={selectedMonth}
-              className="rounded-xl border border-neutral-300 bg-white px-4 py-3 text-sm"
-            >
-              {PROGRAMME_MONTHS.map((m) => {
-                const value = `${m.year}-${String(m.month).padStart(2, "0")}`;
-                return (
-                  <option key={value} value={value}>
-                    {m.label} {m.year}
-                  </option>
-                );
-              })}
-            </select>
-            <button type="submit" className="sr-only">Apply</button>
-          </form>
+          <AdminProgrammeMonthSelect basePath="/admin/activity-summary" selectedMonth={selectedMonth} />
           <a href={csvHref} download={`group-summary-${selectedMonth}.csv`} className="rounded-xl border border-neutral-300 bg-white px-5 py-3 text-sm text-neutral-700">
             Export CSV
           </a>

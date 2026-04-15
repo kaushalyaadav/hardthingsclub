@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabaseBrowser";
+import { hasSupabaseConfig } from "@/lib/supabaseEnv";
 
 export default function SignInButton() {
   const [email, setEmail] = useState("");
@@ -10,9 +11,10 @@ export default function SignInButton() {
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [errorText, setErrorText] = useState("");
   const router = useRouter();
+  const configured = hasSupabaseConfig();
 
   const onLogin = async () => {
-    if (!email.trim() || !password) return;
+    if (!configured || !email.trim() || !password) return;
     setStatus("loading");
     setErrorText("");
     const normalizedEmail = email.trim().toLowerCase();
@@ -38,16 +40,22 @@ export default function SignInButton() {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="Enter your email"
-        className="w-full rounded-xl border border-neutral-300 px-3 py-3 text-sm"
+        disabled={!configured}
+        className="w-full rounded-xl border border-neutral-300 px-3 py-3 text-sm disabled:cursor-not-allowed disabled:bg-neutral-100"
       />
       <input
         type="password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         placeholder="Enter password"
-        className="w-full rounded-xl border border-neutral-300 px-3 py-3 text-sm"
+        disabled={!configured}
+        className="w-full rounded-xl border border-neutral-300 px-3 py-3 text-sm disabled:cursor-not-allowed disabled:bg-neutral-100"
       />
-      <button onClick={onLogin} disabled={status === "loading"} className="w-full rounded-xl bg-black text-white py-3 text-sm font-medium disabled:opacity-70">
+      <button
+        onClick={onLogin}
+        disabled={!configured || status === "loading"}
+        className="w-full rounded-xl bg-black text-white py-3 text-sm font-medium disabled:opacity-70"
+      >
         {status === "loading" ? "Logging in..." : "Login"}
       </button>
       {status === "error" && <p className="text-xs text-red-600">{errorText || "Login failed."}</p>}

@@ -1,9 +1,31 @@
 import { createServerClient, type SetAllCookies } from "@supabase/ssr";
+import { getSupabaseAnonKey, getSupabaseUrl, hasSupabaseConfig } from "@/lib/supabaseEnv";
 import { NextResponse, type NextRequest } from "next/server";
 
 export function updateSession(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+
+  if (!hasSupabaseConfig()) {
+    if (path.startsWith("/api/")) {
+      return NextResponse.json(
+        {
+          error:
+            "Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to .env.local (see .env.example)."
+        },
+        { status: 503 }
+      );
+    }
+    if (path === "/" || path.startsWith("/_next") || path === "/favicon.ico") {
+      return NextResponse.next({ request });
+    }
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    url.searchParams.set("env", "missing");
+    return NextResponse.redirect(url);
+  }
+
   let response = NextResponse.next({ request });
-  const supabase = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+  const supabase = createServerClient(getSupabaseUrl(), getSupabaseAnonKey(), {
     cookies: {
       getAll() {
         return request.cookies.getAll();
@@ -16,7 +38,6 @@ export function updateSession(request: NextRequest) {
 
   return supabase.auth.getUser().then(async ({ data }) => {
     const user = data.user;
-    const path = request.nextUrl.pathname;
     const isAuthPath = path === "/";
     const isProtected = path.startsWith("/home") || path.startsWith("/log") || path.startsWith("/progress") || path.startsWith("/journal") || path.startsWith("/admin");
 

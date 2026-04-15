@@ -1,5 +1,7 @@
+import AdminProgrammeMonthSelect from "@/components/admin/AdminProgrammeMonthSelect";
+import { listCohortMembers } from "@/lib/adminCohort";
 import { createClient } from "@/lib/supabaseServer";
-import { PROGRAMME_MONTHS, getDaysElapsedInMonth } from "@/lib/utils";
+import { PROGRAMME_MONTHS, getDaysElapsedInMonth, getFirstOfNextMonthIso } from "@/lib/utils";
 
 type SearchParams = {
   month?: string;
@@ -20,11 +22,16 @@ export default async function AdminLoggingHabitPage({ searchParams }: { searchPa
   const monthMeta = PROGRAMME_MONTHS.find((m) => m.year === year && m.month === month) ?? PROGRAMME_MONTHS[0];
   const totalDays = getDaysElapsedInMonth(year, month);
 
-  const { data: members } = await supabase.from("profiles").select("id,full_name").eq("role", "member").order("full_name");
-  const monthPrefix = `${year}-${String(month).padStart(2, "0")}`;
-  const { data: logs } = await supabase.from("log_entries").select("user_id,entry_date").gte("entry_date", `${monthPrefix}-01`).lt("entry_date", `${monthPrefix}-32`);
+  const members = await listCohortMembers(supabase);
+  const monthStart = `${year}-${String(month).padStart(2, "0")}-01`;
+  const monthEndExclusive = getFirstOfNextMonthIso(year, month);
+  const { data: logs } = await supabase
+    .from("log_entries")
+    .select("user_id,entry_date")
+    .gte("entry_date", monthStart)
+    .lt("entry_date", monthEndExclusive);
 
-  const rows = (members ?? []).map((member) => {
+  const rows = members.map((member) => {
     const loggedDays = (logs ?? []).filter((l) => l.user_id === member.id).length;
     const pct = totalDays > 0 ? Math.round((loggedDays / totalDays) * 100) : 0;
     return { id: member.id, name: member.full_name, loggedDays, pct };
@@ -49,23 +56,7 @@ export default async function AdminLoggingHabitPage({ searchParams }: { searchPa
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <form>
-            <select
-              name="month"
-              defaultValue={selectedMonth}
-              className="rounded-xl border border-neutral-300 bg-white px-4 py-3 text-sm"
-            >
-              {PROGRAMME_MONTHS.map((m) => {
-                const value = `${m.year}-${String(m.month).padStart(2, "0")}`;
-                return (
-                  <option key={value} value={value}>
-                    {m.label} {m.year}
-                  </option>
-                );
-              })}
-            </select>
-            <button type="submit" className="sr-only">Apply</button>
-          </form>
+          <AdminProgrammeMonthSelect basePath="/admin" selectedMonth={selectedMonth} />
           <a
             href={csvHref}
             download={`logging-habit-${selectedMonth}.csv`}
@@ -105,7 +96,7 @@ export default async function AdminLoggingHabitPage({ searchParams }: { searchPa
                   <td className="px-4 py-4 text-base text-neutral-500">{monthMeta.label} {monthMeta.year}</td>
                   <td className="px-4 py-4 text-base text-neutral-700">{totalDays}</td>
                   <td className="px-4 py-4 text-base text-neutral-900">{row.loggedDays}</td>
-                  <td className="px-4 py-4 text-4 font-semibold" style={{ color }}>
+                  <td className="px-4 py-4 text-base font-semibold" style={{ color }}>
                     {row.pct}%
                   </td>
                   <td className="px-4 py-4">
@@ -119,7 +110,7 @@ export default async function AdminLoggingHabitPage({ searchParams }: { searchPa
           </tbody>
           <tfoot>
             <tr>
-              <td className="px-4 py-4 text-2 font-semibold text-neutral-900">Cohort average</td>
+              <td className="px-4 py-4 text-sm font-semibold text-neutral-900">Cohort average</td>
               <td className="px-4 py-4 text-base text-neutral-500">{monthMeta.label} {monthMeta.year}</td>
               <td className="px-4 py-4 text-base text-neutral-700">{totalDays}</td>
               <td className="px-4 py-4 text-base text-neutral-900">{avgLogged.toFixed(1)}</td>

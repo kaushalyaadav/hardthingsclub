@@ -1,5 +1,5 @@
 import { AdminPageSkeleton } from "@/components/admin/AdminPageSkeleton";
 
-export default function AdminLoading() {
+export default function ActivitySummaryLoading() {
   return <AdminPageSkeleton variant="table" />;
 }

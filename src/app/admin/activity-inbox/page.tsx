@@ -1,3 +1,5 @@
+import ActivityInboxDateSelect from "@/components/admin/ActivityInboxDateSelect";
+import { listCohortMembers } from "@/lib/adminCohort";
 import { createClient } from "@/lib/supabaseServer";
 import { getISTDateString, getInitials } from "@/lib/utils";
 
@@ -6,13 +8,13 @@ export default async function ActivityInboxPage({ searchParams }: { searchParams
   const selectedDate = searchParams.date || getISTDateString();
   const tab = searchParams.tab || "all";
 
-  const { data: members } = await supabase.from("profiles").select("id,full_name").eq("role", "member").order("full_name");
+  const members = await listCohortMembers(supabase);
   const { data: entries } = await supabase
     .from("log_entries")
     .select("id,user_id,session_types,session_duration_minutes,breathwork_minutes,notes,entry_date")
     .eq("entry_date", selectedDate);
   const loggedSet = new Set((entries ?? []).map((e) => e.user_id));
-  const notLogged = (members ?? []).filter((m) => !loggedSet.has(m.id));
+  const notLogged = members.filter((m) => !loggedSet.has(m.id));
 
   const past30Dates = Array.from({ length: 31 }, (_, i) => {
     const d = new Date(`${getISTDateString()}T00:00:00+05:30`);
@@ -35,26 +37,18 @@ export default async function ActivityInboxPage({ searchParams }: { searchParams
           <h1 className="text-2xl font-semibold text-neutral-900">Activity inbox</h1>
           <p className="mt-1 text-sm text-neutral-500">All member activity in one feed · day-level view across the cohort</p>
         </div>
-        <form>
-          <select
-            name="date"
-            defaultValue={selectedDate}
-            className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm"
-          >
-            {past30Dates.map((date) => (
-              <option key={date} value={date}>
-                {date === getISTDateString() ? `Today, ${date}` : date}
-              </option>
-            ))}
-          </select>
-          <button type="submit" className="sr-only">Apply</button>
-        </form>
+        <ActivityInboxDateSelect
+          dates={past30Dates}
+          selectedDate={selectedDate}
+          today={getISTDateString()}
+          tab={tab}
+        />
       </div>
 
       <div className="border-b border-neutral-100 bg-white px-5">
         <div className="flex gap-2">
           {[
-            { key: "all", label: `All (${(members ?? []).length})` },
+            { key: "all", label: `All (${members.length})` },
             { key: "logged", label: `Logged today (${(entries ?? []).length})` },
             { key: "notlogged", label: `Not logged (${notLogged.length})` }
           ].map((item) => {
@@ -78,7 +72,7 @@ export default async function ActivityInboxPage({ searchParams }: { searchParams
       <div className="p-5">
         <div className="space-y-3">
           {shownLogged.map((entry) => {
-            const member = members?.find((m) => m.id === entry.user_id);
+            const member = members.find((m) => m.id === entry.user_id);
             return (
               <div key={entry.id} className="overflow-hidden rounded-xl border border-neutral-200">
                 <div className="flex flex-wrap items-center gap-2 px-4 py-3">

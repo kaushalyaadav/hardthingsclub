@@ -67,8 +67,8 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
-  // Keep profile role in sync if profile row already exists.
-  await supabase.from("profiles").update({ role }).eq("email", email);
+  // Keep profile role in sync if profile row already exists; re-activate when returning to the cohort.
+  await supabase.from("profiles").update({ role, is_active: true }).eq("email", email);
 
   return NextResponse.json({ item: data });
 }
@@ -81,8 +81,19 @@ export async function DELETE(request: Request) {
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
+  const { data: row, error: fetchErr } = await supabase.from("allowed_emails").select("email").eq("id", id).single();
+  if (fetchErr || !row?.email) return NextResponse.json({ error: fetchErr?.message || "Not found" }, { status: 400 });
+
   const { error } = await supabase.from("allowed_emails").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (url && serviceRoleKey) {
+    const admin = createAdminClient(url, serviceRoleKey);
+    await admin.from("profiles").update({ is_active: false }).eq("email", row.email.trim().toLowerCase());
+  }
+
   return NextResponse.json({ ok: true });
 }
 

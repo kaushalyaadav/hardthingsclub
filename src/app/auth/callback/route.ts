@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
+import { hasSupabaseConfig } from "@/lib/supabaseEnv";
 import { createClient } from "@/lib/supabaseServer";
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
   const origin = requestUrl.origin;
+
+  if (!hasSupabaseConfig()) {
+    return NextResponse.redirect(`${origin}/?env=missing`);
+  }
 
   if (!code) return NextResponse.redirect(`${origin}/`);
 

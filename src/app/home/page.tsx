@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import BottomNav from "@/components/member/BottomNav";
 import { createClient } from "@/lib/supabaseServer";
-import { getISTDateString, getInitials, getProgrammeDaysElapsed, PROGRAMME_TOTAL_DAYS } from "@/lib/utils";
+import { getISTDateString, getInitials, getLoggingStreak, getProgrammeDaysElapsed, PROGRAMME_TOTAL_DAYS } from "@/lib/utils";
 import { isMovementDay } from "@/lib/utils";
 
 export default async function HomePage() {
@@ -16,6 +16,8 @@ export default async function HomePage() {
   const { data: profile } = await supabase.from("profiles").select("full_name").eq("id", user.id).single();
   const { data: entries } = await supabase.from("log_entries").select("*").eq("user_id", user.id).order("entry_date", { ascending: false });
   const allEntries = entries ?? [];
+  const loggedDateSet = new Set(allEntries.map((e) => e.entry_date));
+  const loggingStreak = getLoggingStreak(loggedDateSet, today, "relaxed");
   const todayEntry = allEntries.find((e) => e.entry_date === today);
   const totalDays = getProgrammeDaysElapsed(today);
   const loggedDays = allEntries.length;
@@ -72,8 +74,8 @@ export default async function HomePage() {
               <p className="text-xs text-neutral-500"><span className="font-semibold text-neutral-900">{loggedDays}</span> logged out of <span className="font-semibold text-neutral-900">{totalDays}</span> days</p>
             </div>
             <div className="rounded-full bg-neutral-100 px-3 py-1.5 text-center">
-              <p className="text-base font-bold leading-none text-neutral-900">{todayEntry ? 1 : 0}</p>
-              <p className="mt-0.5 text-[9px] leading-tight text-neutral-400">logging<br />streak</p>
+              <p className="text-base font-bold leading-none text-neutral-900">{loggingStreak}</p>
+              <p className="mt-0.5 text-[9px] leading-tight text-neutral-400">current<br />streak</p>
             </div>
           </div>
           <div className="h-1.5 overflow-hidden rounded-full bg-neutral-100">

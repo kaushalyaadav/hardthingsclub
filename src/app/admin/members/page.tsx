@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { listCohortMembers } from "@/lib/adminCohort";
 import { createClient } from "@/lib/supabaseServer";
-import { getISTDateString, getProgrammeDaysElapsed, isMovementDay, getInitials } from "@/lib/utils";
+import { getISTDateString, getLoggingStreak, getProgrammeDaysElapsed, isMovementDay, getInitials } from "@/lib/utils";
 
 function getISTDate(date = new Date()) {
   const dateStr = new Intl.DateTimeFormat("en-CA", {
@@ -35,19 +36,9 @@ function daysBetweenIST(fromStr: string, toStr: string) {
   return Math.round((to - from) / (1000 * 60 * 60 * 24));
 }
 
-function getStreak(dateSet: Set<string>, today: string) {
-  let streak = 0;
-  let cursor = new Date(`${today}T00:00:00+05:30`);
-  while (dateSet.has(dateToISTString(cursor))) {
-    streak += 1;
-    cursor.setDate(cursor.getDate() - 1);
-  }
-  return streak;
-}
-
 export default async function MembersPage() {
   const supabase = createClient();
-  const { data: members } = await supabase.from("profiles").select("id,full_name").eq("role", "member").order("full_name");
+  const members = await listCohortMembers(supabase);
   const { data: logs } = await supabase
     .from("log_entries")
     .select("user_id,entry_date,session_types,breathwork_minutes")
@@ -61,14 +52,14 @@ export default async function MembersPage() {
     return dateToISTString(d);
   });
 
-  const rows = (members ?? []).map((member) => {
+  const rows = members.map((member) => {
     const my = (logs ?? []).filter((l) => l.user_id === member.id);
     const dateSet = new Set(my.map((x) => x.entry_date));
     const logged = my.length;
     const consistency = totalDays ? Math.round((logged / totalDays) * 100) : 0;
     const movement = my.filter((x) => isMovementDay(x.session_types)).length;
     const still = my.filter((x) => x.breathwork_minutes > 0).length;
-    const streak = getStreak(dateSet, today);
+    const streak = getLoggingStreak(dateSet, today, "relaxed");
     const lastDate = my[0]?.entry_date;
     const daysSince = lastDate ? daysBetweenIST(lastDate, today) : null;
     const lastLoggedLabel =
