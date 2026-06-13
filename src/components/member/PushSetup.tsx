@@ -30,19 +30,34 @@ export default function PushSetup() {
       navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
 
-    // Capture install prompt
+    // Check if notification already set up
+    const saved = localStorage.getItem("htc-push-setup");
+    if (saved === "done") {
+      setStep("done");
+      return;
+    }
+
+    // Capture install prompt (doesn't fire on iOS)
+    let promptFired = false;
     const handler = (e: Event) => {
       e.preventDefault();
+      promptFired = true;
       setDeferredPrompt(e);
       setStep("prompt");
     };
     window.addEventListener("beforeinstallprompt", handler);
 
-    // Check if notification already set up
-    const saved = localStorage.getItem("htc-push-setup");
-    if (saved === "done") setStep("done");
+    // On iOS/Safari or if no install prompt fires after 1s, skip to reminder setup
+    const timer = setTimeout(() => {
+      if (!promptFired) {
+        setStep("time");
+      }
+    }, 1000);
 
-    return () => window.removeEventListener("beforeinstallprompt", handler);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+      clearTimeout(timer);
+    };
   }, []);
 
   // Don't show anything if already done or unsupported
