@@ -1,7 +1,7 @@
 import ActivityInboxDateSelect from "@/components/admin/ActivityInboxDateSelect";
 import { listCohortMembers } from "@/lib/adminCohort";
 import { createClient } from "@/lib/supabaseServer";
-import { getISTDateString, getInitials } from "@/lib/utils";
+import { getISTDateString } from "@/lib/utils";
 
 export default async function ActivityInboxPage({ searchParams }: { searchParams: { date?: string; tab?: string } }) {
   const supabase = createClient();
@@ -9,6 +9,8 @@ export default async function ActivityInboxPage({ searchParams }: { searchParams
   const tab = searchParams.tab || "all";
 
   const members = await listCohortMembers(supabase);
+  const { data: profileRows } = await supabase.from("profiles").select("id,full_name");
+  const profileMap = new Map((profileRows ?? []).map((p) => [p.id, p.full_name]));
   const { data: entries } = await supabase
     .from("log_entries")
     .select("id,user_id,session_types,session_duration_minutes,breathwork_minutes,notes,entry_date")
@@ -72,12 +74,11 @@ export default async function ActivityInboxPage({ searchParams }: { searchParams
       <div className="p-5">
         <div className="space-y-3">
           {shownLogged.map((entry) => {
-            const member = members.find((m) => m.id === entry.user_id);
+            const memberName = profileMap.get(entry.user_id) || members.find((m) => m.id === entry.user_id)?.full_name || "Unknown member";
             return (
               <div key={entry.id} className="overflow-hidden rounded-xl border border-neutral-200">
                 <div className="flex flex-wrap items-center gap-2 px-4 py-3">
-                  <span className="grid h-6 w-6 place-items-center rounded-full bg-black text-[9px] font-bold text-white">{getInitials(member?.full_name || "NA")}</span>
-                  <span className="text-sm font-semibold text-neutral-900">{member?.full_name}</span>
+                  <span className="text-sm font-semibold text-neutral-900">{memberName}</span>
                   {entry.session_types?.map((session: string) => (
                     <span key={`${entry.id}-${session}`} className="rounded-full bg-black px-2 py-1 text-xs text-white">
                       {session}
@@ -102,7 +103,6 @@ export default async function ActivityInboxPage({ searchParams }: { searchParams
           )}
           {showNotLogged && notLogged.map((member) => (
             <div key={member.id} className="flex items-center gap-3 rounded-xl border border-dashed border-neutral-300 px-4 py-3">
-              <span className="grid h-6 w-6 place-items-center rounded-full bg-red-600 text-[9px] font-bold text-white">{getInitials(member.full_name)}</span>
               <span className="text-sm text-neutral-500">{member.full_name} — no activity logged today</span>
             </div>
           ))}

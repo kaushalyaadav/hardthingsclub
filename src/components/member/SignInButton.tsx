@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabaseBrowser";
 import { hasSupabaseConfig } from "@/lib/supabaseEnv";
 
@@ -10,7 +9,6 @@ export default function SignInButton() {
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
   const [errorText, setErrorText] = useState("");
-  const router = useRouter();
   const configured = hasSupabaseConfig();
 
   const onLogin = async () => {
@@ -29,8 +27,7 @@ export default function SignInButton() {
       return;
     }
     setStatus("idle");
-    router.push("/");
-    router.refresh();
+    window.location.href = "/";
   };
 
   return (
@@ -54,7 +51,7 @@ export default function SignInButton() {
       <button
         onClick={onLogin}
         disabled={!configured || status === "loading"}
-        className="w-full rounded-xl bg-black text-white py-3 text-sm font-medium disabled:opacity-70"
+        className="w-full rounded-xl bg-blue-600 text-white py-3 text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-70"
       >
         {status === "loading" ? "Logging in..." : "Login"}
       </button>

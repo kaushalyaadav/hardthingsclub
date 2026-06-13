@@ -1,0 +1,3 @@
+-- Run as supabase_admin (superuser) to set admin email for the handle_new_user trigger.
+-- After db reset, run manually:
+--   docker exec supabase_db_hardthingsclub bash -c "PGPASSWORD=postgres psql -U supabase_admin -d postgres -c \"ALTER DATABASE postgres SET \\\"app.admin_email\\\" = 'kaushalyadav1996@gmail.com';\""

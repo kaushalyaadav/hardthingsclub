@@ -1,6 +1,9 @@
 import MemberLogsToolbar from "@/components/admin/MemberLogsToolbar";
 import { listCohortMembers } from "@/lib/adminCohort";
 import { createClient } from "@/lib/supabaseServer";
+import { computeGoalProgress } from "@/lib/goalProgress";
+import { GOAL_META } from "@/lib/types";
+import type { MemberGoal } from "@/lib/types";
 import {
   formatDate,
   getDaysElapsedInMonth,
@@ -43,15 +46,26 @@ export default async function MemberLogsPage({ searchParams }: { searchParams: {
   const monthStart = `${year}-${String(month).padStart(2, "0")}-01`;
   const monthEndExclusive = getFirstOfNextMonthIso(year, month);
 
-  const { data: logsData } = await supabase
-    .from("log_entries")
-    .select("id,user_id,entry_date,session_types,session_duration_minutes,breathwork_minutes,notes")
-    .eq("user_id", selectedId)
-    .gte("entry_date", monthStart)
-    .lt("entry_date", monthEndExclusive)
-    .order("entry_date", { ascending: false });
+  const [{ data: logsData }, { data: goalsData }, { data: goalEntriesData }] = await Promise.all([
+    supabase
+      .from("log_entries")
+      .select("id,user_id,entry_date,session_types,session_duration_minutes,breathwork_minutes,notes")
+      .eq("user_id", selectedId)
+      .gte("entry_date", monthStart)
+      .lt("entry_date", monthEndExclusive)
+      .order("entry_date", { ascending: false }),
+    supabase.from("member_goals").select("*").eq("member_id", selectedId).eq("month", monthStart),
+    supabase
+      .from("log_entries")
+      .select("entry_date,session_types,breathwork_minutes,km,nutrition,sleep_goal")
+      .eq("user_id", selectedId)
+      .gte("entry_date", monthStart)
+      .lt("entry_date", monthEndExclusive),
+  ]);
 
   const rows = logsData ?? [];
+  const memberGoals = (goalsData ?? []) as MemberGoal[];
+  const goalProgress = computeGoalProgress(memberGoals, goalEntriesData ?? [], today);
   const daysElapsedInMonth = getDaysElapsedInMonth(year, month, today);
   const totalLogged = rows.length;
   const consistency = daysElapsedInMonth > 0 ? Math.round((totalLogged / daysElapsedInMonth) * 100) : 0;
@@ -211,6 +225,62 @@ export default async function MemberLogsPage({ searchParams }: { searchParams: {
               </tr>
             </tbody>
           </table>
+        </div>
+
+        {/* Goal progress — same cards as member home page */}
+        <div className="mb-6">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">Goals · {label} {year}</p>
+          {goalProgress.length === 0 ? (
+            <p className="rounded-xl border border-neutral-100 bg-neutral-50 px-4 py-4 text-sm text-neutral-400">
+              No goals set for {label} {year}.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {goalProgress.map((gp) => {
+                const pct = gp.pct;
+                const isHit = pct >= 100;
+                const badgeClass = isHit || gp.pace === "on_track"
+                  ? "bg-green-50 text-green-600"
+                  : gp.pace === "at_risk"
+                  ? "bg-amber-50 text-amber-600"
+                  : "bg-red-50 text-red-600";
+                const barClass = isHit || gp.pace === "on_track"
+                  ? "bg-green-500"
+                  : gp.pace === "at_risk"
+                  ? "bg-amber-400"
+                  : "bg-red-400";
+                const pctClass = isHit || gp.pace === "on_track"
+                  ? "text-green-600"
+                  : gp.pace === "at_risk"
+                  ? "text-amber-600"
+                  : "text-red-600";
+                const paceLabel = isHit ? "Goal Hit! 🎉"
+                  : gp.pace === "on_track" ? "On Track"
+                  : gp.pace === "at_risk" ? "Keep Going"
+                  : "Push Harder";
+                const description = gp.goal.definition || null;
+
+                return (
+                  <div key={gp.goal.id} className="rounded-xl border border-neutral-200 bg-white p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-neutral-900">{GOAL_META[gp.goal.category].label}</span>
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${badgeClass}`}>{paceLabel}</span>
+                    </div>
+                    {description && <p className="text-[11px] text-neutral-500 leading-snug">{description}</p>}
+                    <div className="h-1.5 overflow-hidden rounded-full bg-neutral-100">
+                      <div className={`h-full rounded-full ${barClass}`} style={{ width: `${pct}%` }} />
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] text-neutral-500">
+                        {gp.current} {gp.goal.unit} · target {gp.goal.target} {gp.goal.unit}
+                      </span>
+                      <span className={`text-xs font-bold ${pctClass}`}>{pct}%</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <p className="mb-3 text-xs font-semibold uppercase tracking-[0.08em] text-neutral-500">Daily log · {label} {year}</p>

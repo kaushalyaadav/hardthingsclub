@@ -39,7 +39,7 @@ export function updateSession(request: NextRequest) {
   return supabase.auth.getUser().then(async ({ data }) => {
     const user = data.user;
     const isAuthPath = path === "/";
-    const isProtected = path.startsWith("/home") || path.startsWith("/log") || path.startsWith("/progress") || path.startsWith("/journal") || path.startsWith("/admin");
+    const isProtected = path.startsWith("/home") || path.startsWith("/log") || path.startsWith("/progress") || path.startsWith("/journal") || path.startsWith("/admin") || path.startsWith("/community");
 
     if (!user && isProtected) {
       const url = request.nextUrl.clone();
@@ -48,10 +48,9 @@ export function updateSession(request: NextRequest) {
     }
 
     if (user && isAuthPath) {
-      const adminEmail = (process.env.ADMIN_EMAIL || "").trim().toLowerCase();
-      const isAdminByEmail = !!adminEmail && user.email?.toLowerCase() === adminEmail;
+      const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
       const url = request.nextUrl.clone();
-      url.pathname = isAdminByEmail ? "/admin" : "/home";
+      url.pathname = profile?.role === "admin" ? "/admin" : "/home";
       return NextResponse.redirect(url);
     }
 
