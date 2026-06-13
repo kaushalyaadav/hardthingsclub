@@ -51,9 +51,20 @@ export default function SignInButton() {
       <button
         onClick={onLogin}
         disabled={!configured || status === "loading"}
-        className="w-full rounded-xl bg-blue-600 text-white py-3 text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-70"
+        className={`w-full rounded-xl py-3 text-sm font-medium transition-colors ${
+          status === "loading"
+            ? "bg-blue-400 text-white cursor-not-allowed"
+            : "bg-blue-600 text-white hover:bg-blue-700"
+        }`}
       >
-        {status === "loading" ? "Logging in..." : "Login"}
+        {status === "loading" ? (
+          <span className="inline-flex items-center gap-2">
+            <span className="inline-block h-4 w-4 border-2 border-blue-200 border-r-white rounded-full animate-spin" />
+            Logging in...
+          </span>
+        ) : (
+          "Login"
+        )}
       </button>
       {status === "error" && <p className="text-xs text-red-600">{errorText || "Login failed."}</p>}
     </div>
