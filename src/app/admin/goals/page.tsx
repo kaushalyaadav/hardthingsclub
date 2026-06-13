@@ -14,12 +14,17 @@ export default async function AdminGoalsPage({ searchParams }: { searchParams: S
   const month = searchParams.month ?? defaultMonth;
   const monthDate = `${month}-01`;
 
-  const [{ data: profileRows }, { data: goalsRows }] = await Promise.all([
-    supabase.from("profiles").select("id,full_name,role,is_active").order("full_name"),
+  const [{ data: profileRows }, { data: goalsRows }, { data: allowedData }] = await Promise.all([
+    supabase.from("profiles").select("id,full_name,email,role,is_active").order("full_name"),
     supabase.from("member_goals").select("*").eq("month", monthDate),
+    supabase.from("allowed_emails").select("email"),
   ]);
 
-  const members = (profileRows ?? []).filter((p: any) => p.role === "member" && p.is_active) as { id: string; full_name: string }[];
+  // Only show members in allowed_emails (same as access control)
+  const allowedSet = new Set((allowedData ?? []).map((a: any) => a.email?.toLowerCase()));
+  const members = (profileRows ?? []).filter((p: any) =>
+    p.role === "member" && p.is_active && p.email && allowedSet.has(p.email.toLowerCase())
+  ) as { id: string; full_name: string }[];
   const allGoals = (goalsRows ?? []) as MemberGoal[];
 
   const goalsByMember: Record<string, MemberGoal[]> = {};
