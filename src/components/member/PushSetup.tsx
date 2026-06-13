@@ -182,6 +182,12 @@ export default function PushSetup() {
           <p className="text-xs text-neutral-400">
             Reminder set for {hour}:{minuteDisplay} {ampm} IST every day
           </p>
+          {/* iPhone help text */}
+          {(window.navigator as any).standalone !== true && /iPhone|iPad/.test(navigator.userAgent) && (
+            <div className="rounded-lg bg-blue-50 px-3 py-2 text-[11px] text-blue-700">
+              💡 <strong>iPhone tip:</strong> Tap the Share button (↗️) → "Add to Home Screen" to install this app
+            </div>
+          )}
           <div className="flex gap-2">
             <button onClick={handleSaveTime}
               className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white">
