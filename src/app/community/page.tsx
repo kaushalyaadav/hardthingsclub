@@ -22,8 +22,9 @@ export default async function CommunityPage({ searchParams }: { searchParams: { 
 
   const admin = createAdminClient();
 
-  const [{ data: allProfiles }, { data: streakLogs }, { data: monthLogs }, { data: allGoals }] = await Promise.all([
-    admin.from("profiles").select("id,full_name,role,is_active").order("full_name"),
+  const [{ data: allProfiles }, { data: allowedData }, { data: streakLogs }, { data: monthLogs }, { data: allGoals }] = await Promise.all([
+    admin.from("profiles").select("id,full_name,email,role,is_active").order("full_name"),
+    admin.from("allowed_emails").select("email"),
     admin.from("log_entries").select("user_id,entry_date").gte("entry_date", PROGRAMME_START),
     admin.from("log_entries")
       .select("user_id,entry_date,session_types,breathwork_minutes,km,nutrition,sleep_goal")
@@ -32,7 +33,11 @@ export default async function CommunityPage({ searchParams }: { searchParams: { 
     admin.from("member_goals").select("*").eq("month", monthStart),
   ]);
 
-  const members = (allProfiles ?? []).filter((p: any) => p.role === "member" && p.is_active);
+  // Only show members who are in allowed_emails (same as admin views)
+  const allowedSet = new Set((allowedData ?? []).map((a: any) => a.email?.toLowerCase()));
+  const members = (allProfiles ?? []).filter((p: any) =>
+    p.role === "member" && p.is_active && p.email && allowedSet.has(p.email.toLowerCase())
+  );
 
   type MemberRow = {
     id: string;

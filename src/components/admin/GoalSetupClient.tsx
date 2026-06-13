@@ -159,9 +159,16 @@ export default function GoalSetupClient({
     const supabase = createClient();
     const monthDate = `${month}-01`;
 
-    await supabase.from("member_goals").delete().eq("member_id", selectedId).eq("month", monthDate);
+    const { error: delErr } = await supabase.from("member_goals").delete().eq("member_id", selectedId).eq("month", monthDate);
+    if (delErr) {
+      setSaving(false);
+      setToast(`Error saving: ${delErr.message}`);
+      setTimeout(() => setToast(""), 5000);
+      return;
+    }
+
     if (goals.length > 0) {
-      await supabase.from("member_goals").insert(
+      const { error: insErr } = await supabase.from("member_goals").insert(
         goals.map((g) => ({
           member_id: selectedId,
           month: monthDate,
@@ -174,9 +181,14 @@ export default function GoalSetupClient({
           is_primary: g.is_primary,
         }))
       );
+      if (insErr) {
+        setSaving(false);
+        setToast(`Error saving: ${insErr.message}`);
+        setTimeout(() => setToast(""), 5000);
+        return;
+      }
     }
 
-    // Mark as saved
     setSavedSigs((prev) => ({ ...prev, [selectedId]: goalsSignature(goalDrafts[selectedId] ?? []) }));
     setSaving(false);
     setToast(`Saved goals for ${selected?.full_name}`);

@@ -58,8 +58,10 @@ export default async function HomePage() {
   const loggedDaysThisMonth = allEntries.filter((e) => e.entry_date.startsWith(today.slice(0, 7))).length;
   const monthlyConsistency = dayOfMonth > 0 ? Math.round((loggedDaysThisMonth / dayOfMonth) * 100) : 0;
 
-  const movementDays = allEntries.filter((e) => isMovementDay(e.session_types)).length;
-  const stillDays = allEntries.filter((e) => e.breathwork_minutes > 0).length;
+  // Movement and still days for THIS MONTH only
+  const monthLogs = (monthEntries ?? []) as any[];
+  const movementDays = monthLogs.filter((e) => isMovementDay(e.session_types)).length;
+  const stillDays = monthLogs.filter((e) => e.breathwork_minutes > 0).length;
   const initials = getInitials(profile?.full_name || user.email?.split("@")[0] || "HTC");
   const firstName = (profile?.full_name || user.email?.split("@")[0] || "Member").split(" ")[0];
 

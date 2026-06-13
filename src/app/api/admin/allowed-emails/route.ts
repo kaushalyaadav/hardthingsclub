@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabaseServer";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 
+function getAdminClient() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
+
 async function requireAdmin() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -62,10 +69,10 @@ export async function POST(request: Request) {
     .single();
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
-  // Sync name + role to profile if it exists
+  // Sync name + role to profile using admin client (bypasses RLS)
   const profileUpdate: Record<string, unknown> = { role, is_active: true };
   if (full_name) profileUpdate.full_name = full_name;
-  await supabase.from("profiles").update(profileUpdate).eq("email", email);
+  await getAdminClient().from("profiles").update(profileUpdate).eq("email", email);
 
   return NextResponse.json({ item: data });
 }
@@ -116,12 +123,12 @@ export async function PATCH(request: Request) {
     await supabase.from("allowed_emails").update(allowedUpdate).eq("id", id);
   }
 
-  // Update profile
+  // Update profile using admin client (bypasses RLS)
   const profileUpdate: Record<string, unknown> = {};
   if (full_name) profileUpdate.full_name = full_name;
   if (newEmail) profileUpdate.email = newEmail;
   if (Object.keys(profileUpdate).length > 0) {
-    await supabase.from("profiles").update(profileUpdate).eq("email", row.email);
+    await getAdminClient().from("profiles").update(profileUpdate).eq("email", row.email);
   }
 
   return NextResponse.json({ ok: true });
