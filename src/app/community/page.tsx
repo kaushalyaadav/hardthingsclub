@@ -76,7 +76,7 @@ export default async function CommunityPage({ searchParams }: { searchParams: { 
   });
 
   return (
-    <main className="mx-auto max-w-[420px] pb-20">
+    <main className="mx-auto max-w-[420px] pb-24">
       <CommunityClient rows={rows} month={month} monthLabel={monthLabel} memberCount={members.length} isCurrentMonth={month === defaultMonth} />
       <BottomNav />
     </main>

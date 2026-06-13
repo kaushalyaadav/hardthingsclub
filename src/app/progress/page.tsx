@@ -88,7 +88,7 @@ export default async function ProgressPage({ searchParams }: { searchParams: { m
   const selectedLabel = selectedMonthMeta ? `${selectedMonthMeta.label} ${selectedMonthMeta.year}` : selectedMonth;
 
   return (
-    <main className="mx-auto max-w-[420px] pb-20">
+    <main className="mx-auto max-w-[420px] pb-24">
       <header className="flex items-center justify-between border-b border-neutral-100 px-4 py-3">
         <p className="text-xs font-semibold tracking-[0.04em] text-neutral-900">Hard Things Club</p>
         <div className="grid h-7 w-7 place-items-center rounded-full bg-black text-[10px] font-semibold text-white">

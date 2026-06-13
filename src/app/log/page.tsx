@@ -32,7 +32,7 @@ export default async function LogPage({ searchParams }: { searchParams: { edit?:
   const goalProgress = computeGoalProgress(goals, entriesData ?? [], today);
 
   return (
-    <main className="mx-auto max-w-[420px] pb-6">
+    <main className="mx-auto max-w-[420px] pb-24">
       <header className="flex items-center gap-3 border-b border-neutral-100 px-4 py-3">
         <Link href="/home" className="grid h-7 w-7 place-items-center rounded-full bg-neutral-100 text-sm text-neutral-900">
           ←
