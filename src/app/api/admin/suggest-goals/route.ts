@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     // All entries since programme start for overall stats
     supabase
       .from("log_entries")
-      .select("entry_date,session_types,breathwork_minutes")
+      .select("entry_date,session_types,breathwork_minutes,km,nutrition,sleep_goal")
       .eq("user_id", memberId)
       .gte("entry_date", PROGRAMME_START)
       .lte("entry_date", today),
@@ -56,6 +56,11 @@ export async function POST(request: Request) {
   const programmeDays = allEntries.length;
   const movementDays = allEntries.filter((e) => isMovementDay(e.session_types as any)).length;
   const breathworkDays = allEntries.filter((e) => e.breathwork_minutes > 0).length;
+
+  // Debug: log entries with km for this member
+  const juneEntries = allEntries.filter((e) => e.entry_date.startsWith("2026-06"));
+  const juneRunKm = juneEntries.filter((e) => (e.session_types as any)?.includes("Run")).reduce((sum, e) => sum + ((e.km as any) ?? 0), 0);
+  console.log(`DEBUG [${memberProfile.full_name}]: June entries: ${juneEntries.length}, June run km: ${juneRunKm}`);
 
   // Logging consistency: unique logged days / days elapsed since programme start
   const today_d = new Date(`${today}T00:00:00+05:30`);
@@ -79,7 +84,12 @@ export async function POST(request: Request) {
         const mEnd = m.slice(0, 7);
         const mEntries = allEntries.filter((e) => e.entry_date.startsWith(mEnd));
         const mProgress = computeGoalProgress(monthGoals, mEntries as any, today);
-        return `${monthLabel}:\n` + mProgress.map((gp) =>
+
+        // June 2026 had mid-month goal setting - note the stronger pace
+        const isMidMonthGoalMonth = m === "2026-06-01";
+        const midMonthNote = isMidMonthGoalMonth ? " [Note: goals set mid-month, so pace extrapolates higher for full month]" : "";
+
+        return `${monthLabel}:${midMonthNote}\n` + mProgress.map((gp) =>
           `  - ${GOAL_META[gp.goal.category].label}: target ${gp.goal.target} ${gp.goal.unit}, achieved ${gp.current} (${gp.pct}%)\n    Definition set: "${gp.goal.definition || "none"}"`
         ).join("\n");
       }).join("\n\n")
@@ -128,11 +138,12 @@ ${goalCategoriesDesc}
 
 ═══ TASK ═══
 Suggest 2–3 goals for ${month}. Consider:
-1. What worked in past months (high %, good definitions) — reinforce or build on them
+1. What worked in past months (high %, good definitions) — reinforce or build on them. If any month had [mid-month goal setting], the achievement is even stronger than the % suggests—be ambitious.
 2. What struggled (low %) — either adjust the target to be more realistic, or change the definition to be clearer
 3. The member's core motivation and blockers from their application
 4. Their overall consistency — if logging is low, prioritise logging_days; if movement is low, prioritise workout_days
-5. Don't repeat goals that are clearly wrong for this person
+5. Goals should feel ambitious yet achievable—push them to grow, but keep it sustainable so they stay engaged
+6. Don't repeat goals that are clearly wrong for this person
 
 Return ONLY a JSON array, no explanation, no markdown:
 [
